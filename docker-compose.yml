@@ -37,6 +37,9 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-movary}:${POSTGRES_PASSWORD:-movary}@postgres:5432/${POSTGRES_DB:-movary}
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: ${MOVARY_SECRET_KEY:-change-me-in-production}
+    env_file:
+      - path: .env
+        required: false
     volumes:
       - ./data/uploads:/workspace/movary-backend/uploads
       - ./data/runtime:/workspace/movary-backend/runtime
