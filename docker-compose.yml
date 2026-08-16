@@ -1,0 +1,61 @@
+name: movary
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-movary}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-movary}
+      POSTGRES_DB: ${POSTGRES_DB:-movary}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-movary} -d ${POSTGRES_DB:-movary}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ${MOVARY_BACKEND_IMAGE:-movary/movary-backend}:${MOVARY_BACKEND_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "${MOVARY_BACKEND_PORT:-8000}:8000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-movary}:${POSTGRES_PASSWORD:-movary}@postgres:5432/${POSTGRES_DB:-movary}
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${MOVARY_SECRET_KEY:-change-me-in-production}
+    volumes:
+      - ./data/uploads:/workspace/movary-backend/uploads
+      - ./data/runtime:/workspace/movary-backend/runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    image: ${MOVARY_FRONTEND_IMAGE:-movary/movary-frontend}:${MOVARY_FRONTEND_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "${MOVARY_FRONTEND_PORT:-80}:80"
+    depends_on:
+      - backend
+
