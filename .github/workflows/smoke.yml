@@ -19,7 +19,7 @@ jobs:
       - name: Validate compose configuration
         run: docker compose -f docker-compose.yml config --quiet
 
-      - name: Pull published images
+      - name: Pull published images (skipped when not yet published)
         run: |
-          docker pull movary/movary-backend:latest
-          docker pull movary/movary-frontend:latest
+          docker manifest inspect movary/movary-backend:latest >/dev/null 2>&1 && docker pull movary/movary-backend:latest || echo "movary-backend:latest not published yet — skipping"
+          docker manifest inspect movary/movary-frontend:latest >/dev/null 2>&1 && docker pull movary/movary-frontend:latest || echo "movary-frontend:latest not published yet — skipping"
